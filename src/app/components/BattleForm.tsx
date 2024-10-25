@@ -25,6 +25,7 @@ export const BattleForm: React.FC<BattleFormProps> = ({
                 onChange={(e) => setPlayer1(e.target.value)}
                 placeholder="플레이어 1"
                 className="border p-2 rounded"
+                style={{ color: 'black' }}
             />
             <span className="flex items-center">VS</span>
             <input
@@ -32,6 +33,7 @@ export const BattleForm: React.FC<BattleFormProps> = ({
                 onChange={(e) => setPlayer2(e.target.value)}
                 placeholder="플레이어 2"
                 className="border p-2 rounded"
+                style={{ color: 'black' }}
             />
             <button
                 onClick={() => onBattleResult('win')}
