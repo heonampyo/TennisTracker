@@ -145,10 +145,19 @@ export default function UserDetail({ params }: Props) {
                 backgroundColor: opponentStats.map(stat => {
                     const winRatio = Number(stat.winRate) / 100;
                     return `linear-gradient(to right, 
-                        rgb(34, 197, 94) ${winRatio * 100}%, 
-                        rgb(239, 68, 68) ${winRatio * 100}%)`
+                    rgba(255, 204, 0, 0.8) ${winRatio * 100}%, 
+                    rgba(239, 68, 68, 0.7) ${winRatio * 100}%)`
                 }),
-                borderWidth: 1
+                borderWidth: 1,
+                hoverBackgroundColor: opponentStats.map(stat => {
+                    const winRatio = Number(stat.winRate) / 100;
+                    return `linear-gradient(to right, 
+                    rgba(255, 204, 0, 0.9) ${winRatio * 100}%, 
+                    rgba(239, 68, 68, 0.8) ${winRatio * 100}%)`
+                }),
+                hoverBorderWidth: 2,
+                hoverBorderColor: '#000',
+                cursor: 'pointer'
             }
         ]
     };
@@ -162,8 +171,21 @@ export default function UserDetail({ params }: Props) {
             },
             tooltip: {
                 callbacks: {
-                    label: (context: any) => `승률: ${Number(context.raw).toFixed(1)}%`
-                }
+                    label: (context: any) => `승률: ${Number(context.raw).toFixed(1)}%`,
+                    afterLabel: () => '클릭하여 상세 정보 보기'
+                },
+                titleFont: {
+                    size: 14
+                },
+                bodyFont: {
+                    size: 13
+                },
+                padding: 10,
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleColor: '#fff',
+                bodyColor: '#fff',
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                borderWidth: 1
             }
         },
         scales: {
@@ -174,6 +196,10 @@ export default function UserDetail({ params }: Props) {
                     callback: (value: number) => `${value}%`
                 }
             }
+        },
+        hover: {
+            mode: 'index',
+            intersect: false
         },
         onClick: (event: any, elements: any) => {
             if (elements.length > 0) {
