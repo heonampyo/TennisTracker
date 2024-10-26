@@ -14,10 +14,11 @@ model User {
 }
 
 model Record {
-  id       Int    @id @default(autoincrement())
-  opponent String
-  wins     Int
-  losses   Int
-  userId   Int
-  user     User   @relation(fields: [userId], references: [id])
+  id        Int      @id @default(autoincrement())
+  opponent  String
+  wins      Int
+  losses    Int
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now()) @db.Timestamptz
 }

@@ -1,10 +1,10 @@
-// app/page.tsx
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import { User } from './type/user';
 import { BattleForm } from './components/BattleForm';
 import { UserSummaryCard } from './components/UserSummaryCard';
+import { calculateUserStats } from './utils/stats';
 
 export default function Home() {
     const [users, setUsers] = useState<User[]>([]);
@@ -18,7 +18,15 @@ export default function Home() {
     const fetchUsers = async () => {
         const response = await fetch('/api/users');
         const data: User[] = await response.json();
-        setUsers(data);
+
+        // 승률 기준으로 정렬
+        const sortedUsers = data.sort((a, b) => {
+            const statsA = calculateUserStats(a);
+            const statsB = calculateUserStats(b);
+            return statsB.winRate - statsA.winRate;
+        });
+
+        setUsers(sortedUsers);
     };
 
     const resetData = async () => {
@@ -51,7 +59,7 @@ export default function Home() {
 
     return (
         <div className="p-4">
-            <h1 className="text-2xl font-bold mb-4">대전 기록 관리</h1>
+            <h1 className="text-2xl font-bold mb-4 text-black">대전 기록 관리</h1>
 
             <div className="mb-4">
                 <button
@@ -68,10 +76,11 @@ export default function Home() {
                 setPlayer1={setPlayer1}
                 setPlayer2={setPlayer2}
                 onBattleResult={addBattleResult}
+                users={users}
             />
 
             <div className="mt-8">
-                <h2 className="text-xl font-bold mb-4">전적 현황</h2>
+                <h2 className="text-xl font-bold mb-4 text-black">전적 현황</h2>
                 <div className="grid gap-4">
                     {users.map((user) => (
                         <UserSummaryCard key={user.id} user={user} />
@@ -81,4 +90,3 @@ export default function Home() {
         </div>
     );
 }
-
