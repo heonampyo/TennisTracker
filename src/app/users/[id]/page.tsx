@@ -230,6 +230,29 @@ export default function UserDetail({ params }: Props) {
         }
     };
 
+    const deleteRecord = async (recordId: number) => {
+        if (!window.confirm(`${params.id}/${recordId} 이 전적을 삭제하시겠습니까?`)) return;
+
+        try {
+            const response = await fetch(`/api/users/${params.id}/records/${recordId}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error('전적 삭제에 실패했습니다.' || error.message);
+            }
+
+            // 성공적으로 삭제된 경우 데이터 새로고침
+            await fetchUserData();
+        } catch (error) {
+            console.error('Error deleting record:', error);
+            alert('전적 삭제 중 오류가 발생했습니다.');
+            alert(error.status);
+        }
+    };
+
+
     return (
         <div className="p-6 text-black">
             <div className="flex items-center justify-between mb-6">
@@ -301,26 +324,48 @@ export default function UserDetail({ params }: Props) {
                 <div className="space-y-2">
                     {user.records
                         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                        .map((record, index) => {
+                        .map((record) => {
                             const date = new Date(record.createdAt);
                             const days = ['일', '월', '화', '수', '목', '금', '토'];
                             const koreanDay = days[date.getDay()];
 
                             return (
-                                <div key={index} className="border rounded p-3 bg-gray-50">
-                                    <p className="text-black flex justify-between items-center">
-                                        <span className="flex items-center gap-2">
-                                            vs {record.opponent} - {' '}
-                                            {record.wins > 0 ? (
-                                                <span className="text-green-600">승리</span>
-                                            ) : (
-                                                <span className="text-red-600">패배</span>
-                                            )}
-                                        </span>
-                                        <span className="text-gray-600 text-sm">
-                                            {formatDate(record.createdAt)} ({koreanDay})
-                                        </span>
-                                    </p>
+                                <div key={record.id} className="border rounded p-3 bg-gray-50 hover:bg-gray-100 transition-colors">
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex-grow">
+                                <span className="flex items-center gap-2">
+                                    <span className="font-medium">vs {record.opponent}</span>
+                                    {record.wins > 0 ? (
+                                        <span className="text-green-600 font-semibold">승리</span>
+                                    ) : (
+                                        <span className="text-red-600 font-semibold">패배</span>
+                                    )}
+                                </span>
+                                            <span className="text-gray-600 text-sm block mt-1">
+                                    {formatDate(record.createdAt)} ({koreanDay})
+                                </span>
+                                        </div>
+                                        <button
+                                            onClick={() => deleteRecord(record.id)}
+                                            className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50"
+                                            title="전적 삭제"
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-5 w-5"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
                             );
                         })}
