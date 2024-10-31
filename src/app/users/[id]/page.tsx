@@ -12,7 +12,9 @@ import {
     BarElement,
     Title,
     Tooltip,
-    Legend
+    Legend,
+    ChartData,
+    ChartOptions
 } from 'chart.js';
 
 ChartJS.register(
@@ -144,25 +146,20 @@ export default function UserDetail({ params }: Props) {
                 data: opponentStats.map(stat => Number(stat.winRate)),
                 backgroundColor: opponentStats.map(stat => {
                     const winRatio = Number(stat.winRate) / 100;
-                    return `linear-gradient(to right, 
-                    rgba(255, 204, 0, 0.8) ${winRatio * 100}%, 
-                    rgba(239, 68, 68, 0.7) ${winRatio * 100}%)`
+                    return `linear-gradient(to right, rgba(255, 204, 0, 0.8) ${winRatio * 100}%, rgba(239, 68, 68, 0.7) ${winRatio * 100}%)`;
                 }),
                 borderWidth: 1,
                 hoverBackgroundColor: opponentStats.map(stat => {
                     const winRatio = Number(stat.winRate) / 100;
-                    return `linear-gradient(to right, 
-                    rgba(255, 204, 0, 0.9) ${winRatio * 100}%, 
-                    rgba(239, 68, 68, 0.8) ${winRatio * 100}%)`
+                    return `linear-gradient(to right, rgba(255, 204, 0, 0.9) ${winRatio * 100}%, rgba(239, 68, 68, 0.8) ${winRatio * 100}%)`;
                 }),
                 hoverBorderWidth: 2,
                 hoverBorderColor: '#000',
-                cursor: 'pointer'
             }
         ]
     };
 
-    const chartOptions = {
+    const chartOptions: ChartOptions<'bar'> = {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
@@ -206,12 +203,17 @@ export default function UserDetail({ params }: Props) {
                 const index = elements[0].index;
                 const stat = opponentStats[index];
 
-                const recentMatches = user.records
+                type MatchResult = {
+                    result: '승' | '패';
+                    createdAt: string;
+                };
+
+                const recentMatches: MatchResult[] = user.records
                     .filter(record => record.opponent === stat.opponent)
                     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                     .slice(0, 3)
                     .map(record => ({
-                        result: record.wins > 0 ? '승' : '패' as const,
+                        result: record.wins > 0 ? '승' : '패',
                         createdAt: record.createdAt
                     }));
 
@@ -222,7 +224,7 @@ export default function UserDetail({ params }: Props) {
                         wins: stat.wins,
                         losses: stat.losses
                     },
-                    recentMatches
+                    recentMatches: recentMatches
                 });
             }
         }
@@ -248,7 +250,8 @@ export default function UserDetail({ params }: Props) {
             <div className="mb-8 p-4 bg-white rounded-lg shadow">
                 <h2 className="text-xl font-semibold mb-4 text-black">상대별 승률</h2>
                 <div className="h-[400px] relative">
-                    <Bar data={chartData} options={chartOptions} />
+                    <Bar data={chartData} options={chartOptions}/>
+
                     <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
                         {opponentStats.map((stat, index) => (
                             <div

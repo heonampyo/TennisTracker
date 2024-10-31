@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
         });
 
         return NextResponse.json({ message: '기록이 추가되었습니다.' });
-    } catch (error) {ㅈㄷ
+    } catch (error) {
         return NextResponse.json({ error: '기록 추가 실패' }, { status: 500 });
     }
 }

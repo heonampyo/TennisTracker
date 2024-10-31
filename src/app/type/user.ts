@@ -10,6 +10,7 @@ export interface Record {
     opponent: string;
     wins: number;
     losses: number;
+    createdAt: string;
 }
 
 export interface OpponentStats {
