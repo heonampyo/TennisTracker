@@ -94,7 +94,16 @@ export const BattleForm: React.FC<BattleFormProps> = ({
                             onFocus={() => setShowDropdown1(true)}
                             placeholder="플레이어 1"
                             className="border p-2 rounded w-full pr-8"
-                            style={{ color: 'black' }}
+                            style={{color: 'black'}}
+                            onPaste={(e) => {
+                                e.preventDefault();
+                                const text = e.clipboardData.getData('text').replace(/\s/g, '');
+                                setPlayer1(text);
+                            }}
+                            pattern="\S*"  // 공백 문자 방지
+                            onInput={(e) => {
+                                e.currentTarget.value = e.currentTarget.value.replace(/\s/g, '');
+                            }}
                         />
                         {showDropdown1 && (
                             <button
@@ -107,7 +116,7 @@ export const BattleForm: React.FC<BattleFormProps> = ({
                     </div>
                     {showDropdown1 && (
                         <div className="absolute z-10 w-full mt-1 bg-white border rounded shadow-lg overflow-y-auto"
-                             style={{ maxHeight: '300px' }}>
+                             style={{maxHeight: '300px'}}>
                             {filteredUsers1.map(user => (
                                 <div
                                     key={user.id}
@@ -137,8 +146,18 @@ export const BattleForm: React.FC<BattleFormProps> = ({
                             onFocus={() => setShowDropdown2(true)}
                             placeholder="플레이어 2"
                             className="border p-2 rounded w-full pr-8"
-                            style={{ color: 'black' }}
+                            style={{color: 'black'}}
+                            onPaste={(e) => {
+                                e.preventDefault();
+                                const text = e.clipboardData.getData('text').replace(/\s/g, '');
+                                setPlayer2(text);
+                            }}
+                            pattern="\S*"  // 공백 문자 방지
+                            onInput={(e) => {
+                                e.currentTarget.value = e.currentTarget.value.replace(/\s/g, '');
+                            }}
                         />
+
                         {showDropdown2 && (
                             <button
                                 onClick={() => setShowDropdown2(false)}
@@ -150,7 +169,7 @@ export const BattleForm: React.FC<BattleFormProps> = ({
                     </div>
                     {showDropdown2 && (
                         <div className="absolute z-10 w-full mt-1 bg-white border rounded shadow-lg overflow-y-auto"
-                             style={{ maxHeight: '300px' }}>
+                             style={{maxHeight: '300px'}}>
                             {filteredUsers2.map(user => (
                                 <div
                                     key={user.id}
