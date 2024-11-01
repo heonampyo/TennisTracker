@@ -54,9 +54,9 @@ export default function Home() {
         const data: User[] = await response.json();
 
         const sortedUsers = data.sort((a, b) => {
-            const statsA = calculateUserStats(a);
-            const statsB = calculateUserStats(b);
-            return statsB.winRate - statsA.winRate;
+            const statsA: { totalWins: number; totalGames: number; totalLosses: number; winRate: string } = calculateUserStats(a);
+            const statsB: { totalWins: number; totalGames: number; totalLosses: number; winRate: string } = calculateUserStats(b);
+            return Number(statsB.winRate) - Number(statsA.winRate); // 명시적으로 Number로 변환
         });
 
         setUsers(sortedUsers);
