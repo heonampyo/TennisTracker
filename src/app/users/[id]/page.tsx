@@ -233,7 +233,22 @@ export default function UserDetail({ params }: Props) {
     };
 
     const deleteRecord = async (recordId: number) => {
-        if (!window.confirm(`${params.id}/${recordId} 이 전적을 삭제하시겠습니까?`)) return;
+        const record = user.records.find(r => r.id === recordId);
+        if (!record) return;
+
+        const result = record.wins > 0 ? '승리' : '패배';
+        const date = new Date(record.createdAt);
+        const days = ['일', '월', '화', '수', '목', '금', '토'];
+        const koreanDay = days[date.getDay()];
+        const formattedDate = `${formatDate(record.createdAt)} (${koreanDay})`;
+
+        if (!window.confirm(
+            `다음 전적을 삭제하시겠습니까?\n\n` +
+            `상대: ${record.opponent}\n` +
+            `결과: ${result}\n` +
+            `시간: ${formattedDate}`
+        )) return;
+
 
         try {
             const response = await fetch(`/api/users/${params.id}/records/${recordId}`, {
