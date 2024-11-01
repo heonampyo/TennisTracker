@@ -190,7 +190,9 @@ export default function UserDetail({ params }: Props) {
                 beginAtZero: true,
                 max: 100,
                 ticks: {
-                    callback: (value: number) => `${value}%`
+                    callback: function(tickValue: string | number) {
+                        return typeof tickValue === 'number' ? `${tickValue}%` : tickValue;
+                    }
                 }
             }
         },
@@ -240,7 +242,8 @@ export default function UserDetail({ params }: Props) {
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error('전적 삭제에 실패했습니다.' || error.message);
+                const errorMessage = error.message ? error.message : '전적 삭제에 실패했습니다.';
+                throw new Error(errorMessage);
             }
 
             // 성공적으로 삭제된 경우 데이터 새로고침
@@ -248,7 +251,6 @@ export default function UserDetail({ params }: Props) {
         } catch (error) {
             console.error('Error deleting record:', error);
             alert('전적 삭제 중 오류가 발생했습니다.');
-            alert(error.status);
         }
     };
 
