@@ -19,9 +19,8 @@ export const metadata: Metadata = {
   other: {
     'instagram:card': 'summary_large_image',
     'instagram:title': '파새단(파주 새벽 단식 테니스)',
-    'instagram:description': '파주 새벽 단식 테니스 동호회',
-    'instagram:image': '/pasaedan.jpg',
-    'instagram:image:alt': '테니스공 이미지'
+    'instagram:description': '파주 상지석 테니스장 새벽 6시',
+    'instagram:image': 'https://tennis-tracker-azure.vercel.app/pasaedan.jpg',
   }
 }
 
