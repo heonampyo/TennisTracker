@@ -18,4 +18,5 @@ export interface OpponentStats {
     wins: number;
     losses: number;
     winRate: string;
+    score: number;
 }

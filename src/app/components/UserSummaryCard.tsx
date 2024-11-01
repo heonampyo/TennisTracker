@@ -10,7 +10,7 @@ interface UserSummaryCardProps {
 }
 
 export const UserSummaryCard: React.FC<UserSummaryCardProps> = ({ user }) => {
-    const { totalGames, totalWins, totalLosses, winRate } = calculateUserStats(user);
+    const { totalGames, totalWins, totalLosses, winRate, score } = calculateUserStats(user);
 
     const handleDelete = async (e: React.MouseEvent) => {
         e.preventDefault(); // Link 컴포넌트의 네비게이션을 막습니다
@@ -32,7 +32,7 @@ export const UserSummaryCard: React.FC<UserSummaryCardProps> = ({ user }) => {
                 <p>
                     총 전적: {totalGames}경기 ({totalWins}승 {totalLosses}패)
                     <br />
-                    승률: {winRate}%
+                    포인트: {score} / 승률: {winRate}%
                 </p>
                 <button
                     onClick={handleDelete}

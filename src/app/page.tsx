@@ -54,9 +54,14 @@ export default function Home() {
         const data: User[] = await response.json();
 
         const sortedUsers = data.sort((a, b) => {
-            const statsA: { totalWins: number; totalGames: number; totalLosses: number; winRate: string } = calculateUserStats(a);
-            const statsB: { totalWins: number; totalGames: number; totalLosses: number; winRate: string } = calculateUserStats(b);
-            return Number(statsB.winRate) - Number(statsA.winRate); // 명시적으로 Number로 변환
+            const statsA = calculateUserStats(a);
+            const statsB = calculateUserStats(b);
+
+            // 점수로 정렬 (점수가 같을 경우 승률로 정렬)
+            if (statsB.score !== statsA.score) {
+                return statsB.score - statsA.score;
+            }
+            return Number(statsB.winRate) - Number(statsA.winRate);
         });
 
         setUsers(sortedUsers);
@@ -136,8 +141,23 @@ export default function Home() {
                 <div className="mt-8">
                     <h2 className="text-xl font-bold mb-4 text-black">전적 현황</h2>
                     <div className="grid gap-4">
-                        {users.map((user) => (
-                            <UserSummaryCard key={user.id} user={user} />
+                        {users.map((user, index) => (
+                            <div key={user.id} className="flex items-center gap-4">
+                                <div className={`font-bold w-8 ${
+                                    index === 0
+                                        ? 'text-4xl text-yellow-500' // 1등: 금색, 가장 큰 크기
+                                        : index === 1
+                                            ? 'text-3xl text-gray-400' // 2등: 은색, 두 번째 크기
+                                            : index === 2
+                                                ? 'text-2xl text-amber-700' // 3등: 동색, 세 번째 크기
+                                                : 'text-xl text-gray-400' // 나머지: 회색, 작은 크기
+                                }`}>
+                                    {index + 1}
+                                </div>
+                                <div className="flex-1">
+                                    <UserSummaryCard user={user}/>
+                                </div>
+                            </div>
                         ))}
                     </div>
                 </div>
