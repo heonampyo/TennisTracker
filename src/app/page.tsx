@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import crypto from 'crypto';
 import { User } from './type/user';
 import { BattleForm } from './components/BattleForm';
 import { UserSummaryCard } from './components/UserSummaryCard';
@@ -12,6 +13,15 @@ export default function Home() {
     const [player1, setPlayer1] = useState<string>('');
     const [player2, setPlayer2] = useState<string>('');
     const [showIntro, setShowIntro] = useState(true);
+
+    const HASHED_PASSWORD = '46c6adda1ceaa107d0f71e6adbf4da03dcbc309ee95d681f2d234375ec502b1a';
+
+    const hashPassword = (password: string) => {
+        return crypto
+            .createHash('sha256')
+            .update(password)
+            .digest('hex');
+    };
 
     useEffect(() => {
         fetchUsers();
@@ -27,6 +37,21 @@ export default function Home() {
             }, 3500);
             return () => clearTimeout(timer);
         }
+
+        // 개발자 도구 방지
+        const preventDevTools = () => {
+            document.addEventListener('contextmenu', (e) => e.preventDefault());
+            document.addEventListener('keydown', (e) => {
+                if (
+                    (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+                    (e.key === 'F12')
+                ) {
+                    e.preventDefault();
+                }
+            });
+        };
+
+        preventDevTools();
     }, []);
 
     // 텍스트 애니메이션
@@ -68,6 +93,19 @@ export default function Home() {
     };
 
     const resetData = async () => {
+        const enteredPassword = prompt('비밀번호를 입력해주세요:');
+
+        if (!enteredPassword) {
+            return;
+        }
+
+        const hashedInput = hashPassword(enteredPassword);
+
+        if (hashedInput !== HASHED_PASSWORD) {
+            alert('비밀번호가 틀렸습니다.');
+            return;
+        }
+
         if (window.confirm('모든 데이터를 초기화하시겠습니까?')) {
             await fetch('/api/reset', { method: 'POST' });
             fetchUsers();
