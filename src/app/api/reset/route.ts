@@ -1,7 +1,7 @@
 // 1. 데이터 초기화를 위한 새로운 API 라우트
 // app/api/reset/route.ts
 import { NextResponse } from 'next/server';
-import prisma from '../../../../lib/prisma';
+import {prisma} from '@/lib/prisma'
 
 export async function POST() {
     try {
