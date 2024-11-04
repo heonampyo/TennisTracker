@@ -44,19 +44,13 @@ interface ModalProps {
     onClose: () => void;
 }
 
-const formatDate = (dateString: string) => {
+const formatDateForGrouping = (dateString: string) => {
     const date = new Date(dateString);
-    const days = ['일', '월', '화', '수', '목', '금', '토'];
-    const koreanDay = days[date.getDay()];
-
     return new Intl.DateTimeFormat('ko-KR', {
+        year: 'numeric',
         month: '2-digit',
         day: '2-digit',
-        weekday: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-    }).format(date).replace(`(${koreanDay})`, '');
+    }).format(date);
 };
 
 const MatchModal: React.FC<ModalProps> = ({ opponent, stats, recentMatches, onClose }) => (
@@ -237,18 +231,14 @@ export default function UserDetail({ params }: Props) {
         if (!record) return;
 
         const result = record.wins > 0 ? '승리' : '패배';
-        const date = new Date(record.createdAt);
-        const days = ['일', '월', '화', '수', '목', '금', '토'];
-        const koreanDay = days[date.getDay()];
-        const formattedDate = `${formatDate(record.createdAt)} (${koreanDay})`;
+        const formattedDate = formatDateForGrouping(record.createdAt);
 
         if (!window.confirm(
             `다음 전적을 삭제하시겠습니까?\n\n` +
             `상대: ${record.opponent}\n` +
             `결과: ${result}\n` +
-            `시간: ${formattedDate}`
+            `날짜: ${formattedDate}`
         )) return;
-
 
         try {
             const response = await fetch(`/api/users/${params.id}/records/${recordId}`, {
@@ -261,14 +251,12 @@ export default function UserDetail({ params }: Props) {
                 throw new Error(errorMessage);
             }
 
-            // 성공적으로 삭제된 경우 데이터 새로고침
             await fetchUserData();
         } catch (error) {
             console.error('Error deleting record:', error);
             alert('전적 삭제 중 오류가 발생했습니다.');
         }
     };
-
 
     return (
         <div className="p-6 text-black">
@@ -291,22 +279,6 @@ export default function UserDetail({ params }: Props) {
                 <h2 className="text-xl font-semibold mb-4 text-black">상대별 승률</h2>
                 <div className="h-[400px] relative">
                     <Bar data={chartData} options={chartOptions}/>
-
-                    <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-                        {opponentStats.map((stat, index) => (
-                            <div
-                                key={index}
-                                className="absolute text-center text-sm font-bold"
-                                style={{
-                                    left: `${(index + 0.5) * (100 / opponentStats.length)}%`,
-                                    top: '50%',
-                                    transform: 'translate(-50%, -50%)'
-                                }}
-                            >
-                                {Number(stat.winRate).toFixed(1)}%
-                            </div>
-                        ))}
-                    </div>
                 </div>
             </div>
 
@@ -338,54 +310,75 @@ export default function UserDetail({ params }: Props) {
 
             <div>
                 <h2 className="text-xl font-semibold mb-4 text-black">전체 매치 기록</h2>
-                <div className="space-y-2">
-                    {user.records
-                        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                        .map((record) => {
-                            const date = new Date(record.createdAt);
-                            const days = ['일', '월', '화', '수', '목', '금', '토'];
-                            const koreanDay = days[date.getDay()];
+                <div className="space-y-4">
+                    {Object.entries(
+                        user.records
+                            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                            .reduce((groups: { [key: string]: typeof user.records }, record) => {
+                                const date = formatDateForGrouping(record.createdAt);
+                                if (!groups[date]) {
+                                    groups[date] = [];
+                                }
+                                groups[date].push(record);
+                                return groups;
+                            }, {})
+                    ).map(([date, records]) => (
+                        <div key={date} className="border rounded-lg overflow-hidden">
+                            <div className="bg-gray-100 px-4 py-2 font-medium text-black">
+                                {date}
+                            </div>
+                            <div className="divide-y">
+                                {records.map((record) => {
+                                    const matchTime = new Date(record.createdAt);
+                                    const timeString = matchTime.toLocaleTimeString('ko-KR', {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: false
+                                    });
 
-                            return (
-                                <div key={record.id} className="border rounded p-3 bg-gray-50 hover:bg-gray-100 transition-colors">
-                                    <div className="flex justify-between items-center">
-                                        <div className="flex-grow">
-                                <span className="flex items-center gap-2">
-                                    <span className="font-medium">vs {record.opponent}</span>
-                                    {record.wins > 0 ? (
-                                        <span className="text-green-600 font-semibold">승리</span>
-                                    ) : (
-                                        <span className="text-red-600 font-semibold">패배</span>
-                                    )}
-                                </span>
-                                            <span className="text-gray-600 text-sm block mt-1">
-                                    {formatDate(record.createdAt)} ({koreanDay})
-                                </span>
+                                    return (
+                                        <div key={record.id} className="p-3 bg-white hover:bg-gray-50 transition-colors">
+                                            <div className="flex justify-between items-center">
+                                                <div className="flex-grow">
+                                                    <span className="flex items-center gap-2">
+                                                        <span className="font-medium">vs {record.opponent}</span>
+                                                        {record.wins > 0 ? (
+                                                            <span className="text-green-600 font-semibold">승리</span>
+                                                        ) : (
+                                                            <span className="text-red-600 font-semibold">패배</span>
+                                                        )}
+                                                    </span>
+                                                    <span className="text-gray-600 text-sm block mt-1">
+                                                        {timeString}
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    onClick={() => deleteRecord(record.id)}
+                                                    className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50"
+                                                    title="전적 삭제"
+                                                >
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        className="h-5 w-5"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                        />
+                                                    </svg>
+                                                </button>
+                                            </div>
                                         </div>
-                                        <button
-                                            onClick={() => deleteRecord(record.id)}
-                                            className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50"
-                                            title="전적 삭제"
-                                        >
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                className="h-5 w-5"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                                />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
 

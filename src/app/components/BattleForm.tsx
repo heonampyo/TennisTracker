@@ -11,6 +11,34 @@ interface BattleFormProps {
     users: Array<{ id: number; name: string }>;
 }
 
+// 알림 팝업 컴포넌트
+const AlertPopup = ({ message, type, onClose }: { message: string, type: 'success' | 'error', onClose: () => void }) => {
+    return (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+            <div className={`bg-white p-4 rounded-lg shadow-lg ${type === 'success' ? 'border-green-500' : 'border-red-500'} border-2`}>
+                <div className="flex flex-col items-center">
+                    <p className={`text-lg ${type === 'success' ? 'text-green-600' : 'text-red-600'} mb-4`}>{message}</p>
+                    <button
+                        onClick={onClose}
+                        className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300 text-gray-800"
+                    >
+                        확인
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// 로딩 컴포넌트
+const LoadingSpinner = () => {
+    return (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+    );
+};
+
 export const BattleForm: React.FC<BattleFormProps> = ({
                                                           player1,
                                                           player2,
@@ -23,6 +51,12 @@ export const BattleForm: React.FC<BattleFormProps> = ({
     const [showDropdown2, setShowDropdown2] = useState(false);
     const [filteredUsers1, setFilteredUsers1] = useState(users);
     const [filteredUsers2, setFilteredUsers2] = useState(users);
+    const [isLoading, setIsLoading] = useState(false);
+    const [alert, setAlert] = useState<{show: boolean, message: string, type: 'success' | 'error'}>({
+        show: false,
+        message: '',
+        type: 'success'
+    });
 
     useEffect(() => {
         if (player1.length > 0) {
@@ -82,127 +116,162 @@ export const BattleForm: React.FC<BattleFormProps> = ({
         setShowDropdown2(false);
     };
 
+    const handleBattleResult = async (result: 'win' | 'loss') => {
+        setIsLoading(true);
+        try {
+            await onBattleResult(result);
+            const winnerName = result === 'win' ? player1 : player2;
+            const loserName = result === 'win' ? player2 : player1;
+            setAlert({
+                show: true,
+                message: `${winnerName} 승 vs ${loserName} 패 로 대전 결과가 성공적으로 기록되었습니다!`,
+                type: 'success'
+            });
+        } catch (error) {
+            setAlert({
+                show: true,
+                message: '결과 기록 중 오류가 발생했습니다.',
+                type: 'error'
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+
     return (
-        <div className="flex flex-col gap-4 mb-4">
-            <div className="flex gap-4 items-start">
-                <div className="relative flex-1 max-w-[200px]">
-                    <div className="relative">
-                        <input
-                            value={player1}
-                            onChange={handlePlayer1Change}
-                            onKeyDown={handleKeyDown1}
-                            onFocus={() => setShowDropdown1(true)}
-                            placeholder="플레이어 1"
-                            className="border p-2 rounded w-full pr-8"
-                            style={{color: 'black'}}
-                            onPaste={(e) => {
-                                e.preventDefault();
-                                const text = e.clipboardData.getData('text').replace(/\s/g, '');
-                                setPlayer1(text);
-                            }}
-                            pattern="\S*"  // 공백 문자 방지
-                            onInput={(e) => {
-                                e.currentTarget.value = e.currentTarget.value.replace(/\s/g, '');
-                            }}
-                        />
+        <>
+            {isLoading && <LoadingSpinner />}
+            {alert.show && (
+                <AlertPopup
+                    message={alert.message}
+                    type={alert.type}
+                    onClose={() => setAlert(prev => ({ ...prev, show: false }))}
+                />
+            )}
+
+            <div className="flex flex-col gap-4 mb-4">
+                <div className="flex gap-4 items-start">
+                    <div className="relative flex-1 max-w-[200px]">
+                        <div className="relative">
+                            <input
+                                value={player1}
+                                onChange={handlePlayer1Change}
+                                onKeyDown={handleKeyDown1}
+                                onFocus={() => setShowDropdown1(true)}
+                                placeholder="플레이어 1"
+                                className="border p-2 rounded w-full pr-8"
+                                style={{color: 'black'}}
+                                onPaste={(e) => {
+                                    e.preventDefault();
+                                    const text = e.clipboardData.getData('text').replace(/\s/g, '');
+                                    setPlayer1(text);
+                                }}
+                                pattern="\S*"
+                                onInput={(e) => {
+                                    e.currentTarget.value = e.currentTarget.value.replace(/\s/g, '');
+                                }}
+                            />
+                            {showDropdown1 && (
+                                <button
+                                    onClick={() => setShowDropdown1(false)}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                >
+                                    ✕
+                                </button>
+                            )}
+                        </div>
                         {showDropdown1 && (
-                            <button
-                                onClick={() => setShowDropdown1(false)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                            >
-                                ✕
-                            </button>
+                            <div className="absolute z-10 w-full mt-1 bg-white border rounded shadow-lg overflow-y-auto"
+                                 style={{maxHeight: '300px'}}>
+                                {filteredUsers1.map(user => (
+                                    <div
+                                        key={user.id}
+                                        className="p-2 hover:bg-gray-100 cursor-pointer text-black"
+                                        onClick={() => selectPlayer1(user.name)}
+                                    >
+                                        {user.name}
+                                    </div>
+                                ))}
+                                {filteredUsers1.length === 0 && (
+                                    <div className="p-2 text-gray-500">
+                                        일치하는 사용자가 없습니다
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
-                    {showDropdown1 && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border rounded shadow-lg overflow-y-auto"
-                             style={{maxHeight: '300px'}}>
-                            {filteredUsers1.map(user => (
-                                <div
-                                    key={user.id}
-                                    className="p-2 hover:bg-gray-100 cursor-pointer text-black"
-                                    onClick={() => selectPlayer1(user.name)}
+
+                    <span className="flex items-center font-bold text-black">VS</span>
+
+                    <div className="relative flex-1 max-w-[200px]">
+                        <div className="relative">
+                            <input
+                                value={player2}
+                                onChange={handlePlayer2Change}
+                                onKeyDown={handleKeyDown2}
+                                onFocus={() => setShowDropdown2(true)}
+                                placeholder="플레이어 2"
+                                className="border p-2 rounded w-full pr-8"
+                                style={{color: 'black'}}
+                                onPaste={(e) => {
+                                    e.preventDefault();
+                                    const text = e.clipboardData.getData('text').replace(/\s/g, '');
+                                    setPlayer2(text);
+                                }}
+                                pattern="\S*"
+                                onInput={(e) => {
+                                    e.currentTarget.value = e.currentTarget.value.replace(/\s/g, '');
+                                }}
+                            />
+                            {showDropdown2 && (
+                                <button
+                                    onClick={() => setShowDropdown2(false)}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                                 >
-                                    {user.name}
-                                </div>
-                            ))}
-                            {filteredUsers1.length === 0 && (
-                                <div className="p-2 text-gray-500">
-                                    일치하는 사용자가 없습니다
-                                </div>
+                                    ✕
+                                </button>
                             )}
                         </div>
-                    )}
-                </div>
-
-                <span className="flex items-center font-bold text-black">VS</span>
-
-                <div className="relative flex-1 max-w-[200px]">
-                    <div className="relative">
-                        <input
-                            value={player2}
-                            onChange={handlePlayer2Change}
-                            onKeyDown={handleKeyDown2}
-                            onFocus={() => setShowDropdown2(true)}
-                            placeholder="플레이어 2"
-                            className="border p-2 rounded w-full pr-8"
-                            style={{color: 'black'}}
-                            onPaste={(e) => {
-                                e.preventDefault();
-                                const text = e.clipboardData.getData('text').replace(/\s/g, '');
-                                setPlayer2(text);
-                            }}
-                            pattern="\S*"  // 공백 문자 방지
-                            onInput={(e) => {
-                                e.currentTarget.value = e.currentTarget.value.replace(/\s/g, '');
-                            }}
-                        />
-
                         {showDropdown2 && (
-                            <button
-                                onClick={() => setShowDropdown2(false)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                            >
-                                ✕
-                            </button>
+                            <div className="absolute z-10 w-full mt-1 bg-white border rounded shadow-lg overflow-y-auto"
+                                 style={{maxHeight: '300px'}}>
+                                {filteredUsers2.map(user => (
+                                    <div
+                                        key={user.id}
+                                        className="p-2 hover:bg-gray-100 cursor-pointer text-black"
+                                        onClick={() => selectPlayer2(user.name)}
+                                    >
+                                        {user.name}
+                                    </div>
+                                ))}
+                                {filteredUsers2.length === 0 && (
+                                    <div className="p-2 text-gray-500">
+                                        일치하는 사용자가 없습니다
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
-                    {showDropdown2 && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border rounded shadow-lg overflow-y-auto"
-                             style={{maxHeight: '300px'}}>
-                            {filteredUsers2.map(user => (
-                                <div
-                                    key={user.id}
-                                    className="p-2 hover:bg-gray-100 cursor-pointer text-black"
-                                    onClick={() => selectPlayer2(user.name)}
-                                >
-                                    {user.name}
-                                </div>
-                            ))}
-                            {filteredUsers2.length === 0 && (
-                                <div className="p-2 text-gray-500">
-                                    일치하는 사용자가 없습니다
-                                </div>
-                            )}
-                        </div>
-                    )}
+                </div>
+
+                <div className="flex gap-4">
+                    <button
+                        onClick={() => handleBattleResult('win')}
+                        className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isLoading || !player1 || !player2}
+                    >
+                        플레이어 1 승리
+                    </button>
+                    <button
+                        onClick={() => handleBattleResult('loss')}
+                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isLoading || !player1 || !player2}
+                    >
+                        플레이어 2 승리
+                    </button>
                 </div>
             </div>
-
-            <div className="flex gap-4">
-                <button
-                    onClick={() => onBattleResult('win')}
-                    className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex-1"
-                >
-                    플레이어 1 승리
-                </button>
-                <button
-                    onClick={() => onBattleResult('loss')}
-                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1"
-                >
-                    플레이어 2 승리
-                </button>
-            </div>
-        </div>
+        </>
     );
 };
