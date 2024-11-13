@@ -12,12 +12,16 @@ interface BattleFormProps {
 }
 
 // 알림 팝업 컴포넌트
-const AlertPopup = ({ message, type, onClose }: { message: string, type: 'success' | 'error', onClose: () => void }) => {
+const AlertPopup = ({ message, type, onClose }: {
+    message: string | JSX.Element,
+    type: 'success' | 'error',
+    onClose: () => void
+}) => {
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
             <div className={`bg-white p-4 rounded-lg shadow-lg ${type === 'success' ? 'border-green-500' : 'border-red-500'} border-2`}>
                 <div className="flex flex-col items-center">
-                    <p className={`text-lg ${type === 'success' ? 'text-green-600' : 'text-red-600'} mb-4`}>{message}</p>
+                    <p className={`text-lg ${type === 'success' ? 'text-black' : 'text-red-600'} mb-4`}>{message}</p>
                     <button
                         onClick={onClose}
                         className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300 text-gray-800"
@@ -29,6 +33,7 @@ const AlertPopup = ({ message, type, onClose }: { message: string, type: 'succes
         </div>
     );
 };
+
 
 // 로딩 컴포넌트
 const LoadingSpinner = () => {
@@ -52,7 +57,7 @@ export const BattleForm: React.FC<BattleFormProps> = ({
     const [filteredUsers1, setFilteredUsers1] = useState(users);
     const [filteredUsers2, setFilteredUsers2] = useState(users);
     const [isLoading, setIsLoading] = useState(false);
-    const [alert, setAlert] = useState<{show: boolean, message: string, type: 'success' | 'error'}>({
+    const [alert, setAlert] = useState<{show: boolean, message: string | JSX.Element, type: 'success' | 'error'}>({
         show: false,
         message: '',
         type: 'success'
@@ -81,10 +86,12 @@ export const BattleForm: React.FC<BattleFormProps> = ({
     const handlePlayer1Change = (e: React.ChangeEvent<HTMLInputElement>) => {
         setPlayer1(e.target.value);
         setShowDropdown1(true);
+        setShowDropdown2(false);
     };
 
     const handlePlayer2Change = (e: React.ChangeEvent<HTMLInputElement>) => {
         setPlayer2(e.target.value);
+        setShowDropdown1(false);
         setShowDropdown2(true);
     };
 
@@ -118,13 +125,31 @@ export const BattleForm: React.FC<BattleFormProps> = ({
 
     const handleBattleResult = async (result: 'win' | 'loss') => {
         setIsLoading(true);
+        setShowDropdown1(false);
+        setShowDropdown2(false);
         try {
             await onBattleResult(result);
-            const winnerName = result === 'win' ? player1 : player2;
-            const loserName = result === 'win' ? player2 : player1;
+            const firstPlayer = player1;
+            const secondPlayer = player2;
+            const resultMessage = result === 'win'
+                ? <span>
+                {<span className="font-bold text-red-600 text-[2em]">{firstPlayer}</span>}
+                    <span className="text-red-600 text-[2em]">승</span>
+                vs
+                    {<span className="font-bold text-blue-600 text-xl">{secondPlayer}</span>}
+                    <span className="text-blue-600">패</span>
+              </span>
+                : <span>
+                {<span className="font-bold text-blue-600 text-xl">{firstPlayer}</span>}
+                    <span className="text-blue-600">패</span>
+                vs
+                    {<span className="font-bold text-red-600 text-[2em]">{secondPlayer}</span>}
+                    <span className="text-red-600 text-[2em]">승</span>
+              </span>;
+
             setAlert({
                 show: true,
-                message: `${winnerName} 승 vs ${loserName} 패 로 대전 결과가 성공적으로 기록되었습니다!`,
+                message: <span>{resultMessage} 로 대전 결과가 성공적으로 기록되었습니다!</span>,
                 type: 'success'
             });
         } catch (error) {

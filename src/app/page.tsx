@@ -128,7 +128,6 @@ export default function Home() {
             }),
         });
 
-        setPlayer1('');
         setPlayer2('');
         fetchUsers();
     };
