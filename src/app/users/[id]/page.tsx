@@ -53,6 +53,15 @@ const formatDateForGrouping = (dateString: string) => {
     }).format(date);
 };
 
+const LoadingSpinner = () => (
+    <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-75 z-50">
+        <div className="text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-900 mb-4"></div>
+            <p className="text-gray-900">로딩 중...</p>
+        </div>
+    </div>
+);
+
 const MatchModal: React.FC<ModalProps> = ({ opponent, stats, recentMatches, onClose }) => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white p-6 rounded-lg shadow-xl min-w-[300px]">
@@ -103,6 +112,8 @@ const MatchModal: React.FC<ModalProps> = ({ opponent, stats, recentMatches, onCl
 
 export default function UserDetail({ params }: Props) {
     const [user, setUser] = useState<User | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [deletingRecordId, setDeletingRecordId] = useState<number | null>(null);
     const [selectedMatch, setSelectedMatch] = useState<{
         opponent: string;
         stats: {
@@ -115,6 +126,7 @@ export default function UserDetail({ params }: Props) {
             createdAt: string;
         }>;
     } | null>(null);
+
     const router = useRouter();
 
     useEffect(() => {
@@ -122,12 +134,68 @@ export default function UserDetail({ params }: Props) {
     }, [params.id]);
 
     const fetchUserData = async () => {
-        const response = await fetch(`/api/users/${params.id}`);
-        const data = await response.json();
-        setUser(data);
+        try {
+            setIsLoading(true);
+            const response = await fetch(`/api/users/${params.id}`);
+            if (!response.ok) {
+                throw new Error('사용자 데이터를 불러오는데 실패했습니다.');
+            }
+            const data = await response.json();
+            setUser(data);
+        } catch (error) {
+            console.error('Error fetching user data:', error);
+            alert('데이터를 불러오는 중 오류가 발생했습니다.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    if (!user) return <div className="text-black">Loading...</div>;
+    const deleteRecord = async (recordId: number) => {
+        const record = user?.records.find(r => r.id === recordId);
+        if (!record || !user) return;
+
+        const result = record.wins > 0 ? '승리' : '패배';
+        const formattedDate = formatDateForGrouping(record.createdAt);
+
+        if (!window.confirm(
+            `다음 전적을 삭제하시겠습니까?\n\n` +
+            `상대: ${record.opponent}\n` +
+            `결과: ${result}\n` +
+            `날짜: ${formattedDate}`
+        )) return;
+
+        try {
+            setDeletingRecordId(recordId);
+            const response = await fetch(`/api/users/${params.id}/records/${recordId}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || '전적 삭제에 실패했습니다.');
+            }
+
+            // 성공적으로 삭제된 경우 UI 업데이트
+            const updatedRecords = user.records.filter(r => r.id !== recordId);
+            setUser({ ...user, records: updatedRecords });
+
+            // 전체 데이터 새로고침
+            await fetchUserData();
+        } catch (error) {
+            console.error('Error deleting record:', error);
+            alert('전적 삭제 중 오류가 발생했습니다.');
+        } finally {
+            setDeletingRecordId(null);
+        }
+    };
+
+    if (isLoading) {
+        return <LoadingSpinner />;
+    }
+
+    if (!user) {
+        return <div className="p-6 text-black">사용자를 찾을 수 없습니다.</div>;
+    }
 
     const { totalGames, totalWins, totalLosses, winRate } = calculateUserStats(user);
     const opponentStats = calculateOpponentStats(user);
@@ -140,15 +208,9 @@ export default function UserDetail({ params }: Props) {
                 data: opponentStats.map(stat => Number(stat.winRate)),
                 backgroundColor: opponentStats.map(stat => {
                     const winRatio = Number(stat.winRate) / 100;
-                    return `linear-gradient(to right, rgba(255, 204, 0, 0.8) ${winRatio * 100}%, rgba(239, 68, 68, 0.7) ${winRatio * 100}%)`;
+                    return `rgba(${255 - (winRatio * 255)}, ${winRatio * 255}, 0, 0.6)`;
                 }),
                 borderWidth: 1,
-                hoverBackgroundColor: opponentStats.map(stat => {
-                    const winRatio = Number(stat.winRate) / 100;
-                    return `linear-gradient(to right, rgba(255, 204, 0, 0.9) ${winRatio * 100}%, rgba(239, 68, 68, 0.8) ${winRatio * 100}%)`;
-                }),
-                hoverBorderWidth: 2,
-                hoverBorderColor: '#000',
             }
         ]
     };
@@ -184,32 +246,23 @@ export default function UserDetail({ params }: Props) {
                 beginAtZero: true,
                 max: 100,
                 ticks: {
-                    callback: function(tickValue: string | number) {
-                        return typeof tickValue === 'number' ? `${tickValue}%` : tickValue;
+                    callback: function(value) {
+                        return value + '%';
                     }
                 }
             }
         },
-        hover: {
-            mode: 'index',
-            intersect: false
-        },
-        onClick: (event: any, elements: any) => {
-            if (elements.length > 0) {
+        onClick: (event, elements) => {
+            if (elements && elements.length > 0) {
                 const index = elements[0].index;
                 const stat = opponentStats[index];
 
-                type MatchResult = {
-                    result: '승' | '패';
-                    createdAt: string;
-                };
-
-                const recentMatches: MatchResult[] = user.records
+                const recentMatches = user.records
                     .filter(record => record.opponent === stat.opponent)
                     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                     .slice(0, 3)
                     .map(record => ({
-                        result: record.wins > 0 ? '승' : '패',
+                        result: record.wins > 0 ? ('승' as const) : ('패' as const),
                         createdAt: record.createdAt
                     }));
 
@@ -220,41 +273,9 @@ export default function UserDetail({ params }: Props) {
                         wins: stat.wins,
                         losses: stat.losses
                     },
-                    recentMatches: recentMatches
+                    recentMatches
                 });
             }
-        }
-    };
-
-    const deleteRecord = async (recordId: number) => {
-        const record = user.records.find(r => r.id === recordId);
-        if (!record) return;
-
-        const result = record.wins > 0 ? '승리' : '패배';
-        const formattedDate = formatDateForGrouping(record.createdAt);
-
-        if (!window.confirm(
-            `다음 전적을 삭제하시겠습니까?\n\n` +
-            `상대: ${record.opponent}\n` +
-            `결과: ${result}\n` +
-            `날짜: ${formattedDate}`
-        )) return;
-
-        try {
-            const response = await fetch(`/api/users/${params.id}/records/${recordId}`, {
-                method: 'DELETE',
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                const errorMessage = error.message ? error.message : '전적 삭제에 실패했습니다.';
-                throw new Error(errorMessage);
-            }
-
-            await fetchUserData();
-        } catch (error) {
-            console.error('Error deleting record:', error);
-            alert('전적 삭제 중 오류가 발생했습니다.');
         }
     };
 
@@ -264,7 +285,7 @@ export default function UserDetail({ params }: Props) {
                 <h1 className="text-2xl font-bold text-black">{user.name}님의 상세 전적</h1>
                 <button
                     onClick={() => router.back()}
-                    className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                    className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors"
                 >
                     뒤로가기
                 </button>
@@ -272,13 +293,15 @@ export default function UserDetail({ params }: Props) {
 
             <div className="mb-8 p-4 bg-gray-50 rounded-lg">
                 <h2 className="text-xl font-semibold mb-2 text-black">전체 통계</h2>
-                <p className="text-black">총 {totalGames}경기 ({totalWins}승 {totalLosses}패) - 승률: {winRate}%</p>
+                <p className="text-black">
+                    총 {totalGames}경기 ({totalWins}승 {totalLosses}패) - 승률: {winRate}%
+                </p>
             </div>
 
             <div className="mb-8 p-4 bg-white rounded-lg shadow">
                 <h2 className="text-xl font-semibold mb-4 text-black">상대별 승률</h2>
                 <div className="h-[400px] relative">
-                    <Bar data={chartData} options={chartOptions}/>
+                    <Bar data={chartData} options={chartOptions} />
                 </div>
             </div>
 
@@ -300,7 +323,9 @@ export default function UserDetail({ params }: Props) {
                                 <td className="px-6 py-4 border-b text-black">{stat.opponent}</td>
                                 <td className="px-6 py-4 border-b text-black">{stat.wins}</td>
                                 <td className="px-6 py-4 border-b text-black">{stat.losses}</td>
-                                <td className="px-6 py-4 border-b text-black">{Number(stat.winRate).toFixed(1)}%</td>
+                                <td className="px-6 py-4 border-b text-black">
+                                    {Number(stat.winRate).toFixed(1)}%
+                                </td>
                             </tr>
                         ))}
                         </tbody>
@@ -336,12 +361,14 @@ export default function UserDetail({ params }: Props) {
                                         hour12: false
                                     });
 
+                                    const isDeleting = deletingRecordId === record.id;
+
                                     return (
                                         <div key={record.id} className="p-3 bg-white hover:bg-gray-50 transition-colors">
                                             <div className="flex justify-between items-center">
                                                 <div className="flex-grow">
                                                     <span className="flex items-center gap-2">
-                                                        <span className="font-medium">vs {record.opponent}</span>
+                                                        <span className="font-medium">                                                        vs {record.opponent}</span>
                                                         {record.wins > 0 ? (
                                                             <span className="text-green-600 font-semibold">승리</span>
                                                         ) : (
@@ -354,23 +381,29 @@ export default function UserDetail({ params }: Props) {
                                                 </div>
                                                 <button
                                                     onClick={() => deleteRecord(record.id)}
-                                                    className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50"
+                                                    className={`text-gray-400 hover:text-red-500 transition-colors p-2 
+                                                        rounded-full hover:bg-red-50 ${isDeleting ? 'cursor-not-allowed opacity-50' : ''}`}
+                                                    disabled={isDeleting}
                                                     title="전적 삭제"
                                                 >
-                                                    <svg
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        className="h-5 w-5"
-                                                        fill="none"
-                                                        viewBox="0 0 24 24"
-                                                        stroke="currentColor"
-                                                    >
-                                                        <path
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            strokeWidth={2}
-                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                                        />
-                                                    </svg>
+                                                    {isDeleting ? (
+                                                        <div className="animate-spin h-5 w-5 border-2 border-gray-500 border-t-transparent rounded-full" />
+                                                    ) : (
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            className="h-5 w-5"
+                                                            fill="none"
+                                                            viewBox="0 0 24 24"
+                                                            stroke="currentColor"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth={2}
+                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                            />
+                                                        </svg>
+                                                    )}
                                                 </button>
                                             </div>
                                         </div>

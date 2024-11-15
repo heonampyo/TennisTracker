@@ -13,6 +13,7 @@ export default function Home() {
     const [player1, setPlayer1] = useState<string>('');
     const [player2, setPlayer2] = useState<string>('');
     const [showIntro, setShowIntro] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
 
     const HASHED_PASSWORD = '46c6adda1ceaa107d0f71e6adbf4da03dcbc309ee95d681f2d234375ec502b1a';
 
@@ -25,7 +26,6 @@ export default function Home() {
 
     useEffect(() => {
         fetchUsers();
-        // localStorage에서 인트로 표시 여부 확인
         const hasSeenIntro = sessionStorage.getItem('hasSeenIntro');
 
         if (hasSeenIntro) {
@@ -38,7 +38,6 @@ export default function Home() {
             return () => clearTimeout(timer);
         }
 
-        // 개발자 도구 방지
         const preventDevTools = () => {
             document.addEventListener('contextmenu', (e) => e.preventDefault());
             document.addEventListener('keydown', (e) => {
@@ -54,42 +53,48 @@ export default function Home() {
         preventDevTools();
     }, []);
 
-    // 텍스트 애니메이션
     const textAnimation = useSpring({
         from: { opacity: 0, transform: 'translateY(50px)' },
         to: { opacity: 1, transform: 'translateY(0)' },
         delay: 300,
     });
 
-    // 테니스공 애니메이션
     const ballAnimation = useSpring({
         from: { transform: 'translateX(-100vw) rotate(0deg)' },
         to: { transform: 'translateX(100vw) rotate(720deg)' },
         config: { duration: 2000 },
     });
 
-    // 전체 인트로 페이드아웃 애니메이션
     const fadeOut = useSpring({
         opacity: showIntro ? 1 : 0,
         config: { duration: 500 },
     });
 
     const fetchUsers = async () => {
-        const response = await fetch('/api/users');
-        const data: User[] = await response.json();
+        setIsLoading(true);
+        try {
+            const response = await fetch('/api/users');
+            const data: User[] = await response.json();
 
-        const sortedUsers = data.sort((a, b) => {
-            const statsA = calculateUserStats(a);
-            const statsB = calculateUserStats(b);
+            const sortedUsers = data.sort((a, b) => {
+                const statsA = calculateUserStats(a);
+                const statsB = calculateUserStats(b);
 
-            // 점수로 정렬 (점수가 같을 경우 승률로 정렬)
-            if (statsB.score !== statsA.score) {
-                return statsB.score - statsA.score;
-            }
-            return Number(statsB.winRate) - Number(statsA.winRate);
-        });
+                if (statsB.score !== statsA.score) {
+                    return statsB.score - statsA.score;
+                }
+                return Number(statsB.winRate) - Number(statsA.winRate);
+            });
 
-        setUsers(sortedUsers);
+            setUsers(sortedUsers);
+        } catch (error) {
+            console.error('Failed to fetch users:', error);
+            alert('사용자 데이터를 불러오는데 실패했습니다.');
+        } finally {
+            setTimeout(() => {
+                setIsLoading(false);
+            }, 500);
+        }
     };
 
     const resetData = async () => {
@@ -157,12 +162,43 @@ export default function Home() {
             <div className={`p-4 ${showIntro ? 'hidden' : 'block'}`}>
                 <h1 className="text-2xl font-bold mb-4 text-black">대전 기록 관리</h1>
 
-                <div className="mb-4">
+                <div className="mb-4 flex justify-between">
                     <button
                         onClick={resetData}
                         className="bg-red-500 text-white px-4 py-2 rounded mb-4 hover:bg-red-600"
                     >
                         데이터 초기화
+                    </button>
+                    <button
+                        onClick={fetchUsers}
+                        disabled={isLoading}
+                        className={`px-4 py-2 rounded mb-4 text-white
+                            ${isLoading
+                            ? 'bg-blue-300 cursor-not-allowed'
+                            : 'bg-blue-500 hover:bg-blue-600'
+                        }`}
+                    >
+                        {isLoading ? (
+                            <div className="flex items-center">
+                                <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+                                    <circle
+                                        className="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        strokeWidth="4"
+                                        fill="none"
+                                    />
+                                    <path
+                                        className="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                                    />
+                                </svg>
+                                로딩중...
+                            </div>
+                        ) : '새로고침'}
                     </button>
                 </div>
 
@@ -177,26 +213,50 @@ export default function Home() {
 
                 <div className="mt-8">
                     <h2 className="text-xl font-bold mb-4 text-black">전적 현황</h2>
-                    <div className="grid gap-4">
-                        {users.map((user, index) => (
-                            <div key={user.id} className="flex items-center gap-4">
-                                <div className={`font-bold w-8 ${
-                                    index === 0
-                                        ? 'text-4xl text-yellow-500' // 1등: 금색, 가장 큰 크기
-                                        : index === 1
-                                            ? 'text-3xl text-gray-400' // 2등: 은색, 두 번째 크기
-                                            : index === 2
-                                                ? 'text-2xl text-amber-700' // 3등: 동색, 세 번째 크기
-                                                : 'text-xl text-gray-400' // 나머지: 회색, 작은 크기
-                                }`}>
-                                    {index + 1}
-                                </div>
-                                <div className="flex-1">
-                                    <UserSummaryCard user={user}/>
-                                </div>
+                    {isLoading ? (
+                        <div className="flex justify-center items-center h-40">
+                            <div className="flex flex-col items-center">
+                                <svg className="animate-spin h-10 w-10 text-blue-500 mb-2" viewBox="0 0 24 24">
+                                    <circle
+                                        className="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        strokeWidth="4"
+                                        fill="none"
+                                    />
+                                    <path
+                                        className="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                                    />
+                                </svg>
+                                <span className="text-gray-600">데이터를 불러오는 중...</span>
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    ) : (
+                        <div className="grid gap-4">
+                            {users.map((user, index) => (
+                                <div key={user.id} className="flex items-center gap-4">
+                                    <div className={`font-bold w-8 ${
+                                        index === 0
+                                            ? 'text-4xl text-yellow-500'
+                                            : index === 1
+                                                ? 'text-3xl text-gray-400'
+                                                : index === 2
+                                                    ? 'text-2xl text-amber-700'
+                                                    : 'text-xl text-gray-400'
+                                    }`}>
+                                        {index + 1}
+                                    </div>
+                                    <div className="flex-1">
+                                        <UserSummaryCard user={user}/>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </>
