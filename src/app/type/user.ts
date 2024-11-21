@@ -2,6 +2,7 @@
 export interface User {
     id: number;
     name: string;
+    fcmToken?: string;
     records: Record[];
 }
 
