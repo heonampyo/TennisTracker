@@ -26,15 +26,31 @@ export async function POST(request: NextRequest) {
             }, { status: 400 });
         }
 
-        const updateData: Prisma.UserUpdateInput = {
-            fcmToken: fcmToken
-        };
+        // 1. 이름으로 사용자 조회
+        const user = await prisma.user.findFirst({
+            where: {
+                name: userId // 여기서 userId는 실제로는 name 값
+            }
+        });
 
+        if (!user) {
+            return NextResponse.json({
+                error: '해당 이름의 사용자를 찾을 수 없습니다.',
+                debug: {
+                    ...requestLog,
+                    searchedName: userId
+                }
+            }, { status: 404 });
+        }
+
+        // 2. 찾은 사용자의 ID로 FCM 토큰 업데이트
         const updatedUser = await prisma.user.update({
             where: {
-                id: userId
+                id: user.id
             },
-            data: updateData
+            data: {
+                fcmToken: fcmToken
+            }
         });
 
         return NextResponse.json({
@@ -42,7 +58,8 @@ export async function POST(request: NextRequest) {
             user: updatedUser,
             debug: {
                 ...requestLog,
-                success: true
+                success: true,
+                userId: user.id
             }
         });
 
