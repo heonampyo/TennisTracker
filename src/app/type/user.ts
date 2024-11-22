@@ -3,6 +3,7 @@ export interface User {
     id: number;
     name: string;
     fcmToken?: string;
+    isAllPush: boolean;
     records: Record[];
 }
 

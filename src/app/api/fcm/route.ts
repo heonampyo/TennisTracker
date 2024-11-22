@@ -6,21 +6,23 @@ import { Prisma } from '@prisma/client';
 export async function POST(request: NextRequest) {
     try {
         const requestData = await request.json();
-        const { userId, fcmToken } = requestData;
+        const { userId, fcmToken, isAllPush } = requestData;
 
         const requestLog = {
             receivedData: requestData,
             timestamp: new Date().toISOString()
         };
 
-        if (!userId || !fcmToken) {
+        // 필수 파라미터 검증
+        if (!userId || !fcmToken || isAllPush === undefined) {
             return NextResponse.json({
                 error: '필수 파라미터가 누락되었습니다.',
                 debug: {
                     ...requestLog,
                     validationError: {
                         userId: !userId ? 'missing' : 'present',
-                        fcmToken: !fcmToken ? 'missing' : 'present'
+                        fcmToken: !fcmToken ? 'missing' : 'present',
+                        isAllPush: isAllPush === undefined ? 'missing' : 'present'
                     }
                 }
             }, { status: 400 });
@@ -29,7 +31,7 @@ export async function POST(request: NextRequest) {
         // 1. 이름으로 사용자 조회
         const user = await prisma.user.findFirst({
             where: {
-                name: userId // 여기서 userId는 실제로는 name 값
+                name: userId
             }
         });
 
@@ -43,18 +45,19 @@ export async function POST(request: NextRequest) {
             }, { status: 404 });
         }
 
-        // 2. 찾은 사용자의 ID로 FCM 토큰 업데이트
+        // 2. 찾은 사용자의 ID로 FCM 토큰과 isAllPush 값 업데이트
         const updatedUser = await prisma.user.update({
             where: {
                 id: user.id
             },
             data: {
-                fcmToken: fcmToken
+                fcmToken: fcmToken,
+                isAllPush: isAllPush
             }
         });
 
         return NextResponse.json({
-            message: 'FCM 토큰이 업데이트되었습니다.',
+            message: 'FCM 토큰과 알림 설정이 업데이트되었습니다.',
             user: updatedUser,
             debug: {
                 ...requestLog,

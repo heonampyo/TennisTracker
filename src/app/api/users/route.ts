@@ -1,6 +1,7 @@
 // app/api/users/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 import { sendPushNotification } from '@/lib/firebase-admin';
 
@@ -23,16 +24,21 @@ export async function POST(request: NextRequest) {
             select: {
                 id: true,
                 name: true,
-                fcmToken: true
+                fcmToken: true,
+                isAllPush: true
             }
         });
         if (!user1) {
             user1 = await prisma.user.create({
-                data: { name },
+                data: {
+                    name,
+                    isAllPush: true // 기본값 설정
+                },
                 select: {
                     id: true,
                     name: true,
-                    fcmToken: true
+                    fcmToken: true,
+                    isAllPush: true
                 }
             });
         }
@@ -43,16 +49,21 @@ export async function POST(request: NextRequest) {
             select: {
                 id: true,
                 name: true,
-                fcmToken: true
+                fcmToken: true,
+                isAllPush: true
             }
         });
         if (!user2) {
             user2 = await prisma.user.create({
-                data: { name: opponent },
+                data: {
+                    name: opponent,
+                    isAllPush: true // 기본값 설정
+                },
                 select: {
                     id: true,
                     name: true,
-                    fcmToken: true
+                    fcmToken: true,
+                    isAllPush: true
                 }
             });
         }
@@ -81,9 +92,10 @@ export async function POST(request: NextRequest) {
             },
         });
 
-        // FCM 푸시 알림 전송
+        // 푸시 알림 전송을 위한 배열
         const pushNotifications = [];
 
+        // 1. 경기 참여자들에게 푸시 알림 전송
         if (user1.fcmToken) {
             pushNotifications.push(
                 sendPushNotification(
@@ -104,12 +116,84 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // 2. isAllPush가 true인 사용자들 중 경기 참여자를 제외한 사용자들에게 푸시 알림 전송
+        const allPushUsers = await prisma.user.findMany({
+            where: {
+                isAllPush: true,
+                fcmToken: {
+                    not: null
+                },
+                AND: [
+                    { name: { not: name } },
+                    { name: { not: opponent } }
+                ]
+            },
+            select: {
+                name: true,
+                fcmToken: true
+            }
+        });
+
+        // 모든 구독자에게 경기 결과 알림 전송
+        allPushUsers.forEach(user => {
+            if (user.fcmToken) {
+                pushNotifications.push(
+                    sendPushNotification(
+                        user.fcmToken,
+                        '새로운 경기 알림',
+                        `${name}님과 ${opponent}님의 경기 결과: ${name}님 ${result === 'win' ? '승리' : '패배'}`
+                    )
+                );
+            }
+        });
+
         // 모든 푸시 알림 비동기 처리
         await Promise.allSettled(pushNotifications);
 
-        return NextResponse.json({ message: '기록이 추가되었습니다.' });
+        return NextResponse.json({
+            message: '기록이 추가되었습니다.',
+            debug: {
+                participantsCount: 2,
+                subscribersCount: allPushUsers.length,
+                totalPushNotifications: pushNotifications.length
+            }
+        });
+
     } catch (error) {
         console.error('Error creating records:', error);
-        return NextResponse.json({ error: '기록 추가 실패' }, { status: 500 });
+        const errorResponse: {
+            error: string;
+            debug?: {
+                errorName?: string;
+                errorMessage?: string;
+                errorStack?: string;
+                prismaError?: {
+                    code?: string;
+                    meta?: unknown;
+                };
+            };
+        } = {
+            error: '기록 추가 실패'
+        };
+
+        if (error instanceof Error) {
+            errorResponse.debug = {
+                errorName: error.name,
+                errorMessage: error.message,
+                errorStack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            };
+        }
+
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            errorResponse.debug = {
+                ...errorResponse.debug,
+                prismaError: {
+                    code: error.code,
+                    meta: error.meta
+                }
+            };
+        }
+
+        return NextResponse.json(errorResponse, { status: 500 });
     }
 }
