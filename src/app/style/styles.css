@@ -1,0 +1,71 @@
+.seasonal-styles {
+    background: linear-gradient(to bottom, #e0f7fa, #b2ebf2);
+}
+
+.intro-screen {
+    background: #e0f7fa;
+}
+
+.intro-title {
+    color: #00796b;
+    font-size: 7rem;
+}
+
+.intro-subtitle {
+    color: rgba(0, 121, 107, 0.8);
+    font-size: 3rem;
+}
+
+.battle-records {
+    background-color: rgba(255, 235, 59, 0.8);
+    color: #00796b;
+    padding: 16px;
+    border-radius: 12px;
+}
+
+.reset-button {
+    background-color: rgba(255, 235, 59, 1);
+    color: #00796b;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: background-color 0.2s, transform 0.2s;
+}
+.reset-button:hover {
+    background-color: #fdd835;
+    transform: translateY(-2px);
+}
+
+.result-button {
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.2s;
+}
+.result-button.win {
+    background-color: #4caf50;
+    color: white;
+}
+.result-button.win:hover {
+    background-color: #43a047;
+    transform: translateY(-2px);
+}
+.result-button.loss {
+    background-color: #f44336;
+    color: white;
+}
+.result-button.loss:hover {
+    background-color: #e53935;
+    transform: translateY(-2px);
+}
+
+.user-card {
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 12px;
+    padding: 12px;
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+.user-card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transform: translateY(-2px);
+}
