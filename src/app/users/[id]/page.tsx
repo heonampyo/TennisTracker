@@ -215,6 +215,14 @@ export default function UserDetail({ params }: Props) {
         ]
     };
 
+    // 기존 formatDateForGrouping 함수 활용
+    const getTodayRecords = () => {
+        const today = formatDateForGrouping(new Date().toISOString());
+        return user?.records.filter(record =>
+            formatDateForGrouping(record.createdAt) === today
+        ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    };
+
     const chartOptions: ChartOptions<'bar'> = {
         responsive: true,
         maintainAspectRatio: false,
@@ -297,6 +305,54 @@ export default function UserDetail({ params }: Props) {
                     총 {totalGames}경기 ({totalWins}승 {totalLosses}패) - 승률: {winRate}%
                 </p>
             </div>
+
+            {getTodayRecords()?.length > 0 && (
+                <div className="mb-8 p-4 bg-gray-50 rounded-lg">
+                    <h2 className="text-xl font-semibold mb-2 text-black">오늘의 경기</h2>
+                    <div className="space-y-2">
+                        {getTodayRecords()?.map((record) => {
+                            const timeString = new Date(record.createdAt).toLocaleTimeString('ko-KR', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: false
+                            });
+                            const isDeleting = deletingRecordId === record.id;
+
+                            return (
+                                <div key={record.id} className="flex items-center justify-between bg-white p-3 rounded">
+                                    <div className="flex-grow">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-medium">vs {record.opponent}</span>
+                                            {record.wins > 0 ? (
+                                                <span className="text-green-600 font-semibold">승리</span>
+                                            ) : (
+                                                <span className="text-red-600 font-semibold">패배</span>
+                                            )}
+                                        </div>
+                                        <span className="text-gray-600 text-sm block mt-1">{timeString}</span>
+                                    </div>
+                                    <button
+                                        onClick={() => deleteRecord(record.id)}
+                                        className={`text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50 ${
+                                            isDeleting ? 'cursor-not-allowed opacity-50' : ''
+                                        }`}
+                                        disabled={isDeleting}
+                                        title="전적 삭제"
+                                    >
+                                        {isDeleting ? (
+                                            <div className="animate-spin h-5 w-5 border-2 border-gray-500 border-t-transparent rounded-full" />
+                                        ) : (
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        )}
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             <div className="mb-8 p-4 bg-white rounded-lg shadow">
                 <h2 className="text-xl font-semibold mb-4 text-black">상대별 승률</h2>
