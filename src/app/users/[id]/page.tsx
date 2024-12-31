@@ -126,6 +126,7 @@ export default function UserDetail({ params }: Props) {
             createdAt: string;
         }>;
     } | null>(null);
+    const [selectedYear, setSelectedYear] = useState<number>(2025);
 
     const router = useRouter();
 
@@ -148,6 +149,13 @@ export default function UserDetail({ params }: Props) {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const filterRecordsByYear = (records: any[]) => {
+        return records.filter(record => {
+            const recordYear = new Date(record.createdAt).getFullYear();
+            return recordYear === selectedYear;
+        });
     };
 
     const deleteRecord = async (recordId: number) => {
@@ -175,11 +183,9 @@ export default function UserDetail({ params }: Props) {
                 throw new Error(error.message || '전적 삭제에 실패했습니다.');
             }
 
-            // 성공적으로 삭제된 경우 UI 업데이트
             const updatedRecords = user.records.filter(r => r.id !== recordId);
             setUser({ ...user, records: updatedRecords });
 
-            // 전체 데이터 새로고침
             await fetchUserData();
         } catch (error) {
             console.error('Error deleting record:', error);
@@ -197,8 +203,9 @@ export default function UserDetail({ params }: Props) {
         return <div className="p-6 text-black">사용자를 찾을 수 없습니다.</div>;
     }
 
-    const { totalGames, totalWins, totalLosses, winRate } = calculateUserStats(user);
-    const opponentStats = calculateOpponentStats(user);
+    const filteredRecords = filterRecordsByYear(user.records);
+    const { totalGames, totalWins, totalLosses, winRate } = calculateUserStats({ ...user, records: filteredRecords });
+    const opponentStats = calculateOpponentStats({ ...user, records: filteredRecords });
 
     const chartData = {
         labels: opponentStats.map(stat => stat.opponent),
@@ -215,10 +222,9 @@ export default function UserDetail({ params }: Props) {
         ]
     };
 
-    // 기존 formatDateForGrouping 함수 활용
     const getTodayRecords = () => {
         const today = formatDateForGrouping(new Date().toISOString());
-        return user?.records.filter(record =>
+        return filteredRecords.filter(record =>
             formatDateForGrouping(record.createdAt) === today
         ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     };
@@ -265,7 +271,7 @@ export default function UserDetail({ params }: Props) {
                 const index = elements[0].index;
                 const stat = opponentStats[index];
 
-                const recentMatches = user.records
+                const recentMatches = filteredRecords
                     .filter(record => record.opponent === stat.opponent)
                     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                     .slice(0, 3)
@@ -299,8 +305,35 @@ export default function UserDetail({ params }: Props) {
                 </button>
             </div>
 
+            <div className="mb-4">
+                <div className="flex gap-4 items-center">
+                    <label className="inline-flex items-center">
+                        <input
+                            type="radio"
+                            className="form-radio"
+                            name="year"
+                            value="2025"
+                            checked={selectedYear === 2025}
+                            onChange={(e) => setSelectedYear(Number(e.target.value))}
+                        />
+                        <span className="ml-2 mix-blend-difference text-white">2025년</span>
+                    </label>
+                    <label className="inline-flex items-center">
+                        <input
+                            type="radio"
+                            className="form-radio"
+                            name="year"
+                            value="2024"
+                            checked={selectedYear === 2024}
+                            onChange={(e) => setSelectedYear(Number(e.target.value))}
+                        />
+                        <span className="ml-2 mix-blend-difference text-white">2024년</span>
+                    </label>
+                </div>
+            </div>
+
             <div className="mb-8 p-4 bg-gray-50 rounded-lg">
-                <h2 className="text-xl font-semibold mb-2 text-black">전체 통계</h2>
+                <h2 className="text-xl font-semibold mb-2 text-black">{selectedYear}년 전체 통계</h2>
                 <p className="text-black">
                     총 {totalGames}경기 ({totalWins}승 {totalLosses}패) - 승률: {winRate}%
                 </p>
@@ -393,7 +426,7 @@ export default function UserDetail({ params }: Props) {
                 <h2 className="text-xl font-semibold mb-4 text-black">전체 매치 기록</h2>
                 <div className="space-y-4">
                     {Object.entries(
-                        user.records
+                        filteredRecords
                             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                             .reduce((groups: { [key: string]: typeof user.records }, record) => {
                                 const date = formatDateForGrouping(record.createdAt);
@@ -424,7 +457,7 @@ export default function UserDetail({ params }: Props) {
                                             <div className="flex justify-between items-center">
                                                 <div className="flex-grow">
                                                     <span className="flex items-center gap-2">
-                                                        <span className="font-medium">                                                        vs {record.opponent}</span>
+                                                        <span className="font-medium">vs {record.opponent}</span>
                                                         {record.wins > 0 ? (
                                                             <span className="text-green-600 font-semibold">승리</span>
                                                         ) : (
