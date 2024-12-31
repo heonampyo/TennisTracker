@@ -14,6 +14,7 @@ export default function Home() {
     const [player2, setPlayer2] = useState<string>('');
     const [showIntro, setShowIntro] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
+    const [selectedYear, setSelectedYear] = useState<number>(2025);
 
     const HASHED_PASSWORD = '46c6adda1ceaa107d0f71e6adbf4da03dcbc309ee95d681f2d234375ec502b1a';
 
@@ -51,7 +52,32 @@ export default function Home() {
         };
 
         preventDevTools();
-    }, []);
+    }, [selectedYear]);
+
+    const YearSelector = () => (
+        <div className="flex gap-4 mb-4">
+            <label className="flex items-center">
+                <input
+                    type="radio"
+                    value={2025}
+                    checked={selectedYear === 2025}
+                    onChange={(e) => setSelectedYear(Number(e.target.value))}
+                    className="mr-2"
+                />
+                2025년
+            </label>
+            <label className="flex items-center">
+                <input
+                    type="radio"
+                    value={2024}
+                    checked={selectedYear === 2024}
+                    onChange={(e) => setSelectedYear(Number(e.target.value))}
+                    className="mr-2"
+                />
+                2024년
+            </label>
+        </div>
+    );
 
     const textAnimation = useSpring({
         from: { opacity: 0, transform: 'translateY(50px)' },
@@ -76,9 +102,27 @@ export default function Home() {
             const response = await fetch('/api/users');
             const data: User[] = await response.json();
 
-            const sortedUsers = data.sort((a, b) => {
-                const statsA = calculateUserStats(a);
-                const statsB = calculateUserStats(b);
+            // 선택된 년도의 기록이 있는 사용자만 필터링
+            const filteredUsers = data.filter(user =>
+                user.records.some(record =>
+                    new Date(record.createdAt).getFullYear() === selectedYear
+                )
+            );
+
+            // 필터링된 사용자들의 해당 년도 기록만으로 통계 계산
+            const sortedUsers = filteredUsers.sort((a, b) => {
+                const statsA = calculateUserStats({
+                    ...a,
+                    records: a.records.filter(record =>
+                        new Date(record.createdAt).getFullYear() === selectedYear
+                    )
+                });
+                const statsB = calculateUserStats({
+                    ...b,
+                    records: b.records.filter(record =>
+                        new Date(record.createdAt).getFullYear() === selectedYear
+                    )
+                });
 
                 if (statsB.score !== statsA.score) {
                     return statsB.score - statsA.score;
@@ -96,6 +140,7 @@ export default function Home() {
             }, 500);
         }
     };
+
 
     const resetData = async () => {
         const enteredPassword = prompt('비밀번호를 입력해주세요:');
@@ -213,48 +258,40 @@ export default function Home() {
 
                 <div className="mt-8">
                     <h2 className="text-xl font-bold mb-4 text-black">전적 현황</h2>
+                    <YearSelector/>
                     {isLoading ? (
                         <div className="flex justify-center items-center h-40">
                             <div className="flex flex-col items-center">
                                 <svg className="animate-spin h-10 w-10 text-blue-500 mb-2" viewBox="0 0 24 24">
-                                    <circle
-                                        className="opacity-25"
-                                        cx="12"
-                                        cy="12"
-                                        r="10"
-                                        stroke="currentColor"
-                                        strokeWidth="4"
-                                        fill="none"
-                                    />
-                                    <path
-                                        className="opacity-75"
-                                        fill="currentColor"
-                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                                    />
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                            strokeWidth="4" fill="none"/>
+                                    <path className="opacity-75" fill="currentColor"
+                                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                                 </svg>
                                 <span className="text-gray-600">데이터를 불러오는 중...</span>
                             </div>
                         </div>
                     ) : (
                         <div className="grid gap-4">
-                            {users.map((user, index) => (
-                                <div key={user.id} className="flex items-center gap-4">
-                                    <div className={`font-bold w-8 ${
-                                        index === 0
-                                            ? 'text-4xl text-yellow-500'
-                                            : index === 1
-                                                ? 'text-3xl text-gray-400'
-                                                : index === 2
-                                                    ? 'text-2xl text-amber-700'
-                                                    : 'text-xl text-gray-400'
-                                    }`}>
-                                        {index + 1}
+                            {users.length === 0 ? (
+                                <p className="text-gray-500 text-center">{selectedYear}년 데이터가 없습니다.</p>
+                            ) : (
+                                users.map((user, index) => (
+                                    <div key={user.id} className="flex items-center gap-4">
+                                        <div className={`font-bold w-8 ${
+                                            index === 0 ? 'text-4xl text-yellow-500' :
+                                                index === 1 ? 'text-3xl text-gray-400' :
+                                                    index === 2 ? 'text-2xl text-amber-700' :
+                                                        'text-xl text-gray-400'
+                                        }`}>
+                                            {index + 1}
+                                        </div>
+                                        <div className="flex-1">
+                                            <UserSummaryCard user={user} selectedYear={selectedYear} />
+                                        </div>
                                     </div>
-                                    <div className="flex-1">
-                                        <UserSummaryCard user={user}/>
-                                    </div>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </div>
                     )}
                 </div>

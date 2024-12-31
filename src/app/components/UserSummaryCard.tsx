@@ -8,11 +8,25 @@ import crypto from 'crypto';
 
 interface UserSummaryCardProps {
     user: User;
+    selectedYear: number;  // 년도 prop 추가
 }
 
-export const UserSummaryCard: React.FC<UserSummaryCardProps> = ({ user }) => {
+export const UserSummaryCard: React.FC<UserSummaryCardProps> = ({ user, selectedYear }) => {
     const [isDeleting, setIsDeleting] = useState(false);
-    const { totalGames, totalWins, totalLosses, winRate, score } = calculateUserStats(user);
+
+    // 선택된 년도의 기록만 필터링
+    const filteredRecords = user.records.filter(record =>
+        new Date(record.createdAt).getFullYear() === selectedYear
+    );
+
+    // 필터링된 기록으로 새로운 user 객체 생성
+    const filteredUser = {
+        ...user,
+        records: filteredRecords
+    };
+
+    // 필터링된 데이터로 통계 계산
+    const { totalGames, totalWins, totalLosses, winRate, score } = calculateUserStats(filteredUser);
 
     const HASHED_PASSWORD = '46c6adda1ceaa107d0f71e6adbf4da03dcbc309ee95d681f2d234375ec502b1a';
 
@@ -24,16 +38,12 @@ export const UserSummaryCard: React.FC<UserSummaryCardProps> = ({ user }) => {
     };
 
     const handleDelete = async (e: React.MouseEvent) => {
-        e.preventDefault(); // Link 컴포넌트의 네비게이션을 막습니다
+        e.preventDefault();
 
         const enteredPassword = prompt('비밀번호를 입력해주세요:');
-
-        if (!enteredPassword) {
-            return;
-        }
+        if (!enteredPassword) return;
 
         const hashedInput = hashPassword(enteredPassword);
-
         if (hashedInput !== HASHED_PASSWORD) {
             alert('비밀번호가 틀렸습니다.');
             return;
@@ -61,12 +71,17 @@ export const UserSummaryCard: React.FC<UserSummaryCardProps> = ({ user }) => {
         }
     };
 
+    // 해당 년도의 기록이 없는 경우 카드를 렌더링하지 않음
+    if (filteredRecords.length === 0) {
+        return null;
+    }
+
     return (
         <Link href={`/users/${user.id}`}>
             <div className="border p-4 rounded shadow hover:bg-gray-50 cursor-pointer transition-colors relative">
                 <h3 className="font-bold text-lg">{user.name}</h3>
                 <p>
-                    총 전적: {totalGames}경기 ({totalWins}승 {totalLosses}패)
+                    {selectedYear}년 전적: {totalGames}경기 ({totalWins}승 {totalLosses}패)
                     <br />
                     포인트: {score} / 승률: {winRate}%
                 </p>
