@@ -2,19 +2,23 @@
 import { User, OpponentStats } from '../type/user';
 
 // 점수 계산 로직을 비즈니스 레이어에서 처리
-const calculateScore = (wins: number, losses: number): number => {
+const calculateScore = (name: string, wins: number, losses: number): number => {
+    if (name == '게스트'){
+        return 0;
+    }
     return wins;
     // return (wins * 3) + (losses);
 };
 
 export const calculateUserStats = (user: User) => {
+    const name = user.name;
     const totalWins = user.records.reduce((acc, record) => acc + record.wins, 0);
     const totalLosses = user.records.reduce((acc, record) => acc + record.losses, 0);
     const totalGames = totalWins + totalLosses;
     const winRate = totalGames > 0
         ? ((totalWins / totalGames) * 100).toFixed(1)
         : '0.0';
-    const score = calculateScore(totalWins, totalLosses);
+    const score = calculateScore(name, totalWins, totalLosses);
 
     return {
         totalGames,
@@ -48,6 +52,7 @@ export const calculateOpponentStats = (user: User): OpponentStats[] => {
 
         // 점수 계산
         acc[record.opponent].score = calculateScore(
+            user.name,
             acc[record.opponent].wins,
             acc[record.opponent].losses
         );
