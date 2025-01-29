@@ -3,7 +3,8 @@ import { User, OpponentStats } from '../type/user';
 
 // 점수 계산 로직을 비즈니스 레이어에서 처리
 const calculateScore = (wins: number, losses: number): number => {
-    return (wins * 3) + (losses);
+    return wins;
+    // return (wins * 3) + (losses);
 };
 
 export const calculateUserStats = (user: User) => {
